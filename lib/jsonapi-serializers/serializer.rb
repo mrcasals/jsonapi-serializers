@@ -31,6 +31,8 @@ module JSONAPI
 
         # Internal serializer options, not exposed through attr_accessor. No touchie.
         @_include_linkages = options[:include_linkages] || []
+
+        @_include_relationships_data = options[:include_relationships_data] || false
       end
 
       # Override this to customize the JSON:API "id" for this object.
@@ -92,7 +94,7 @@ module JSONAPI
               'related' => relationship_related_link(attribute_name),
             },
           }
-          if @_include_linkages.include?(formatted_attribute_name)
+          if @_include_linkages.include?(formatted_attribute_name) || @_include_relationships_data
             if object.nil?
               # Spec: Resource linkage MUST be represented as one of the following:
               # - null for empty to-one relationships.
@@ -123,7 +125,7 @@ module JSONAPI
           # - an empty array ([]) for empty to-many relationships.
           # - an array of linkage objects for non-empty to-many relationships.
           # http://jsonapi.org/format/#document-structure-resource-relationships
-          if @_include_linkages.include?(formatted_attribute_name)
+          if @_include_linkages.include?(formatted_attribute_name) || @_include_relationships_data
             data[formatted_attribute_name].merge!({'data' => []})
             objects = objects || []
             objects.each do |obj|
@@ -208,6 +210,8 @@ module JSONAPI
       options[:include] = options.delete('include') || options[:include]
       options[:serializer] = options.delete('serializer') || options[:serializer]
       options[:context] = options.delete('context') || options[:context] || {}
+      options[:include_relationships_data] = options.delete('include_relationships_data') ||
+        options[:include_relationships_data] || false
 
       # Normalize includes.
       includes = options[:include]
@@ -217,6 +221,7 @@ module JSONAPI
       passthrough_options = {
         context: options[:context],
         serializer: options[:serializer],
+        include_relationships_data: true,
         include: includes
       }
 
@@ -277,6 +282,7 @@ module JSONAPI
           passthrough_options = {}
           passthrough_options[:serializer] = find_serializer_class(data[:object])
           passthrough_options[:include_linkages] = data[:include_linkages]
+          passthrough_options[:include_relationships_data] = options[:include_relationships_data]
           serialize_primary(data[:object], passthrough_options)
         end
       end
